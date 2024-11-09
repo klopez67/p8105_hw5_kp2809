@@ -31,8 +31,7 @@ t.test(sim_data)|>
 ```
 
 
-Function for performing a one-sample t-test and returning the estimate & p-value
- 
+Function for performing a one-sample t-test and returning the estimate & p-value:
 ```{r}
 
 sim_t_test = function ( n , mu= 0, sigma =5) {
@@ -50,7 +49,7 @@ sim_t_test = function ( n , mu= 0, sigma =5) {
 
 sim_t_test(n=30)
 ```
-For 5000 datasets: 
+For 5000 datasets: when mu=1
 ```{r}
 output = vector("list", 5000)
 
@@ -63,19 +62,9 @@ sim_results_mu1 = bind_rows(output)
 sim_results_mu1
 ```
 
-```{r}
-output = vector("list", 5000)
+Function for calculating power: known as the proportion of times the null was rejected 
 
-for (i in 1:5000) {
-  output[[i]] = sim_t_test(n=30,mu=2)
-}
-
-sim_results_mu2 = bind_rows(output)
-
-sim_results_mu2
-```
-
-Function for calculating power: the proportion of times the null was rejected 
+- Use after binding all simulations 
 ```{r}
 
 sim_power = function ( data) {
@@ -83,33 +72,48 @@ sim_power = function ( data) {
   data|>
    filter(p.value < 0.05) |>
   summarize(
-    power = n() / nrow(data))
+    power = n() / nrow(data), 
+    mu = unique(mu))
   
 }
 
-sim_power(sim_results_mu2)
-
 ```
 
 
-
+Function that run the 5000 sample for loop updating mu for mu= 1,2,3,4,5,6 
 ```{r}
-output = vector("list", 5000)
+sim_results=list()
 
-for (i in 1:5000) {
-  output[[i]] = sim_t_test(n=30,mu=3)
+for (mu_val in 1:6) {
+  
+
+  output= vector("list", 5000)
+  for (i in 1:5000) {
+    output[[i]] = sim_t_test(n = 30, mu = mu_val)
+  }
+  
+  sim_results[[mu_val]]= bind_rows(output) |>
+    mutate(mu = mu_val)  
 }
 
-sim_results_mu3 = bind_rows(output)
-
-sim_results_mu3
 ```
 
 ```{r}
-
+sim_results
 ```
 
 
+```{r}
+output= map_dfr(sim_results, sim_power)|>
+  bind_rows()
+
+output 
+output|>
+  ggplot(aes(x=mu, y = power))+
+  geom_point()
+```
+
+The scatter plot of the power of the test associated with a given mu value  increases as mu increases. With a fixed sample size of n=30 and standard deviation = 5, increasing the magnitude of mu increases the observed power of the test. The larger values of mu create a greater difference from the null hypothesis, making it easier to detect a true effect.
 
 # Problem 3 
 
