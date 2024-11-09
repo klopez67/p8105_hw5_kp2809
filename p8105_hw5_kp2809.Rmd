@@ -8,19 +8,32 @@ output: github_document
 library(tidyverse)
 library(rvest)
 library(broom)
+library(dplyr)
 ```
 
 ```{r}
-set.seed(1)
+set.seed(5)
 ```
-
 
 # Problem 1 
 
- Function for performing a one-sample t-test and returning the p-value
- 
-```{r eval=FALSE}
+# Problem 2
 
+For one randomly generated sample of n=30, with mean = 0, and sd= 5, run a t.test() and return the estimate & p-value: 
+```{r}
+sim_data = 
+    tibble(
+    x = rnorm (30, mean= 0, sd= 5))
+
+t.test(sim_data)|>
+  broom::tidy()|>
+  select(estimate,p.value)
+```
+
+
+Function for performing a one-sample t-test and returning the estimate & p-value
+ 
+```{r}
 
 sim_t_test = function ( n , mu= 0, sigma =5) {
   
@@ -28,26 +41,76 @@ sim_t_test = function ( n , mu= 0, sigma =5) {
     tibble(
     x = rnorm (n, mean= mu, sd= sigma))
   
-  t_test_result= 
-    sim_data|>
-    t.test(x, mu = mu) |>
-    broom::tidy() |>
-    select(p.value)
-  
-  return(p.value)
+  sim_data|>
+    t.test()|>
+    broom::tidy()|>
+    select(estimate, p.value)
   
 }
 
-sim_t_test(n=3)
+sim_t_test(n=30)
+```
+For 5000 datasets: 
+```{r}
+output = vector("list", 5000)
+
+for (i in 1:5000) {
+  output[[i]] = sim_t_test(n=30)
+}
+
+sim_results_mu1 = bind_rows(output)
+
+sim_results_mu1
+```
+
+```{r}
+output = vector("list", 5000)
+
+for (i in 1:5000) {
+  output[[i]] = sim_t_test(n=30,mu=2)
+}
+
+sim_results_mu2 = bind_rows(output)
+
+sim_results_mu2
+```
+
+Function for calculating power: the proportion of times the null was rejected 
+```{r}
+
+sim_power = function ( data) {
+  
+  data|>
+   filter(p.value < 0.05) |>
+  summarize(
+    power = n() / nrow(data))
+  
+}
+
+sim_power(sim_results_mu2)
+
 ```
 
 
-# Problem 2 
+
+```{r}
+output = vector("list", 5000)
+
+for (i in 1:5000) {
+  output[[i]] = sim_t_test(n=30,mu=3)
+}
+
+sim_results_mu3 = bind_rows(output)
+
+sim_results_mu3
+```
+
+```{r}
+
+```
+
 
 
 # Problem 3 
 
-```{r}
-rnorm(n=5000)
-```
 
