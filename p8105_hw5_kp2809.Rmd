@@ -4,14 +4,13 @@ author: "Kimberly Lopez"
 date: "2024-11-06"
 output: github_document
 ---
-```{r}
+```{r warning=FALSE}
 library(tidyverse)
 library(rvest)
 library(broom)
 library(dplyr)
-```
+library(patchwork)
 
-```{r}
 set.seed(5)
 ```
 
@@ -119,22 +118,104 @@ The scatter plot of the power of the test associated with a given mu value incre
 Make a plot showing the average estimate of 𝜇̂ on the y axis and the true value of 𝜇on the x axis. 
 
 ```{r}
-sim_results|>
+all_mu_hats= 
+  sim_results|>
   bind_rows()|>
   group_by(mu)|>
   summarize(
     mu_hat= mean(estimate))|>
   ggplot(aes(x=mu, y=mu_hat))+
   geom_point()
+
+all_mu_hats
 ```
 
 Make a second plot (or overlay on the first) the average estimate of 𝜇̂ only in samples for which the null was rejected on the y axis and the true value of 𝜇on the x axis. 
 
 ```{r}
-
+sim_results|>
+  bind_rows()|>
+  group_by(mu)|>
+  filter(p.value < 0.05) |>
+  summarize(
+    mu_hat= mean(estimate))|>
+  ggplot(aes(x=mu, y=mu_hat))+
+  geom_point()+ 
+  geom_smooth(se=FALSE)+
+  labs(
+    title= "Samples where the null was rejected"
+  )+
+  all_mu_hats+ 
+  geom_smooth(se=FALSE)+ 
+  labs(
+    title= "For all samples")
 ```
 
 
 Is the sample average of 𝜇̂ across tests for which the null is rejected approximately equal to the true value of 𝜇? Why or why not?
 
+The mu estimate for which the null is reject is not always approximately equal to the true value of mu when the null is rejected. When the null is rejected, there is significant evidence that the sample deviates from the true value of mu under the null hypothesis. As shown by the left plot, this can lead to a slight overestimation or underestimation of the true mu value for when mu values are smaller. This may also be due to the lower power observed among the smaller mu values from plot 1. 
+
+
 # Problem 3 
+
+The homicide data is data The Washington Post has gathered data on homicides in 50 large U.S. cities. 
+```{r}
+homicide_data = 
+  read.csv("homicide-data.csv")|>
+  janitor::clean_names()|>
+  mutate(
+    reported_date= as.character(reported_date),                  
+    reported_date = as.Date(reported_date, format = "%Y%m%d") 
+  )
+
+homicide_data
+```
+
+The homicide_data is made of `r nrow(homicide_data)` entries, each of which describes a homicide, and `r ncol(homicide_data)` columns. Each entry has data on `r colnames(homicide_data)`. There are `r length(unique(homicide_data[["city"]]))` cities included where homicides occurred in the US from 
+`r format(min(homicide_data[["reported_date"]], na.rm = TRUE), "%Y")` to `r format(max(homicide_data[["reported_date"]], na.rm = TRUE), "%Y")`. 
+
+
+Create a city_state variable(e.g. “Baltimore, MD”) and then summarize within cities to obtain the total number of homicides and the number and the number of unsolved homicides (those for which the disposition is “Closed without arrest” or “Open/No arrest”).
+```{r}
+homicide_data = 
+  homicide_data |> 
+  mutate(
+    city_state = paste(city,state, sep=", "))
+
+homicide_city_stats = 
+  homicide_data|>
+  group_by(city_state)|>
+  summarize( 
+    tot_homicides = n(), 
+    unsolved_homicides = 
+      sum(
+      str_detect(disposition, "Closed without arrest") | str_detect(disposition, "Open/No arrest"))
+    )
+
+head(homicide_city_stats)
+```
+The `homicide_city_stats` dataframe has `r nrow(homicide_city_stats)` entries, each of which describes the stats of a city, and `r ncol(homicide_city_stats)` columns. Each entry has data on `r colnames(homicide_city_stats)`.
+
+
+For the city of Baltimore, MD, use the `prop.test` function to estimate the proportion of homicides that are unsolved; save the output of prop.test as an R object, apply the `broom::tidy` to this object and pull the estimated proportion and confidence intervals from the resulting tidy dataframe.
+
+```{r}
+baltimore_data= 
+  homicide_city_stats|>
+  filter(city_state =="Baltimore, MD")
+
+baltimore_prop_test=
+  prop.test(x= as.numeric(baltimore_data[3]), as.numeric(baltimore_data[2]))
+
+baltimore_prop_test|>
+  broom::tidy()|>
+  select(estimate,conf.low,conf.high)
+```
+
+
+Now run prop.test for each of the cities in your dataset, and extract both the proportion of unsolved homicides and the confidence interval for each. Do this within a “tidy” pipeline, making use of purrr::map, purrr::map2, list columns and unnest as necessary to create a tidy dataframe with estimated proportions and CIs for each city.
+
+Create a plot that shows the estimates and CIs for each city – check out geom_errorbar for a way to add error bars based on the upper and lower limits. Organize cities according to the proportion of unsolved homicides.
+
+
