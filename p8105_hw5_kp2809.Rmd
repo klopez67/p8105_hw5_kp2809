@@ -10,6 +10,7 @@ library(rvest)
 library(broom)
 library(dplyr)
 library(patchwork)
+library(purrr)
 
 set.seed(5)
 ```
@@ -58,7 +59,7 @@ for (i in 1:5000) {
 
 sim_results_mu1 = bind_rows(output)
 
-sim_results_mu1
+head(sim_results_mu1)
 ```
 
 Function for calculating power: known as the proportion of times the null was rejected 
@@ -98,7 +99,7 @@ for (mu_val in 1:6) {
 ```
 
 ```{r}
-sim_results
+summary(sim_results)
 ```
 
 
@@ -169,7 +170,6 @@ homicide_data =
     reported_date = as.Date(reported_date, format = "%Y%m%d") 
   )
 
-homicide_data
 ```
 
 The homicide_data is made of `r nrow(homicide_data)` entries, each of which describes a homicide, and `r ncol(homicide_data)` columns. Each entry has data on `r colnames(homicide_data)`. There are `r length(unique(homicide_data[["city"]]))` cities included where homicides occurred in the US from 
@@ -216,6 +216,88 @@ baltimore_prop_test|>
 
 Now run prop.test for each of the cities in your dataset, and extract both the proportion of unsolved homicides and the confidence interval for each. Do this within a “tidy” pipeline, making use of purrr::map, purrr::map2, list columns and unnest as necessary to create a tidy dataframe with estimated proportions and CIs for each city.
 
-Create a plot that shows the estimates and CIs for each city – check out geom_errorbar for a way to add error bars based on the upper and lower limits. Organize cities according to the proportion of unsolved homicides.
+```{r}
+city_stat_nest= 
+  homicide_city_stats|>
+  nest( data = tot_homicides:unsolved_homicides)
+
+city_stat_nest|> 
+  group_by(city_state)|>
+  mutate(
+    prop_test = map(data, \(x) prop.test(x= x[["unsolved_homicides"]], n= x[["tot_homicides"]])),
+    tidy_results = map(prop_test,broom::tidy))|>
+  unnest(tidy_results) |>
+  select(estimate, conf.low, conf.high)
+```
+
+Doing the same thing but with function `map2(x, y, .function` instead:
+```{r}
+
+city_stats= 
+  city_stat_nest |>
+  group_by(city_state) |>
+  mutate(
+    prop_test = map2(
+      .x = map(data, ~.x[["unsolved_homicides"]]),  
+      .y = map(data, ~.x[["tot_homicides"]]),     
+      ~prop.test(x = .x, n = .y)),
+    tidy_results = map(prop_test, broom::tidy)  ) |>
+  unnest(tidy_results) |>
+  select(estimate, conf.low, conf.high)
+
+head(city_stats)
+```
+
+Original for loop method: same results as mapping methods 
+```{r}
+city_prop_results = list()
+
+
+for (city in unique(homicide_city_stats[["city_state"]])){
+  
+  city_data= 
+  homicide_city_stats|>
+  filter(city_state ==city)
+  
+  
+  city_prop_test=
+  prop.test(x= as.numeric(city_data[["unsolved_homicides"]]),
+            n= as.numeric(city_data[["tot_homicides"]]))
+  
+  city_results= 
+    city_prop_test|>
+    broom::tidy()|>
+    select(estimate, conf.low, conf.high)|>
+    mutate(
+      city_state= city
+    )
+  
+  city_prop_results[[city]] = city_results
+}
+
+
+all_cities_results = 
+  bind_rows(city_prop_results)|>
+  relocate(city_state)
+
+head(all_cities_results)
+```
+I first started using a forloop method to create this dataframe, and then was able to do it using the `purr::map1` method and `purr::map2` function. I will continue with using the dataframe from the map2 function, but essentially came to create the same dataframes with all 3 methods that show `r nrow(city_stats)` entries, and `r ncol(city_stats)` columns. Each row has data on `r colnames(city_stats)` for all `r nrow(city_stats)` cities.
+
+
+Created a plot that shows the estimates and CIs for each city using geom_errorbar for a way to add error bars based on the upper and lower limits. 
+
+```{r}
+city_stats|>
+  ggplot(aes(x=reorder(city_state, estimate), y=estimate))+
+  geom_point(alpha=.4)+
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high))+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+ 
+  labs( title= "Proportion Estimate of Unsolved Homicides by City", 
+        x= "City", 
+        y="Proportion Estimate of Uncolved Homicides")
+```
+
+
 
 
