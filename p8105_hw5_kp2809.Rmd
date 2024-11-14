@@ -17,6 +17,48 @@ set.seed(5)
 
 # Problem 1 
 
+Birthday problem 
+
+```{r eval=FALSE, include=FALSE}
+group_sizes=  2:50
+simulations=  10000
+results=  numeric(
+  length(group_sizes))
+```
+
+```{r eval=FALSE, include=FALSE}
+
+bday_dup= function(n) {
+  
+  birthdays =  sample(1:365, n, replace = TRUE)  
+  return(
+    any(duplicated(birthdays))) 
+}
+
+```
+
+For loop across all 
+```{r eval=FALSE, include=FALSE}
+
+for (i in (group_sizes)) {
+  n = group_sizes[i]
+  
+  duplicates_count=  sum(replicate(simulations, bday_dup(n)))
+  results[i]=  duplicates_count / simulations
+  
+}|> 
+  mutate(
+    data.frame(
+  group_size = group_sizes,
+  probability = results))
+
+as_tibble(results)
+```
+
+
+Plot the results
+
+
 # Problem 2
 
 For one randomly generated sample of n=30, with mean = 0, and sd= 5, run a t.test() and return the estimate & p-value: 
@@ -160,7 +202,7 @@ The mu estimate for which the null is reject is not always approximately equal t
 
 # Problem 3 
 
-The homicide data is data The Washington Post has gathered data on homicides in 50 large U.S. cities. 
+The homicide data is data The Washington Post has gathered data on homicides in large U.S. cities. 
 ```{r}
 homicide_data = 
   read.csv("homicide-data.csv")|>
@@ -172,8 +214,10 @@ homicide_data =
 
 ```
 
-The homicide_data is made of `r nrow(homicide_data)` entries, each of which describes a homicide, and `r ncol(homicide_data)` columns. Each entry has data on `r colnames(homicide_data)`. There are `r length(unique(homicide_data[["city"]]))` cities included where homicides occurred in the US from 
+The homicide_data is made of `r nrow(homicide_data)` entries, each of which describes a homicide, and `r ncol(homicide_data)` columns. Each entry has data on `r colnames(homicide_data)`. There are `r nrow(unique(homicide_data[c("city", "state")]))` cities included where homicides occurred in the US from 
 `r format(min(homicide_data[["reported_date"]], na.rm = TRUE), "%Y")` to `r format(max(homicide_data[["reported_date"]], na.rm = TRUE), "%Y")`. 
+
+**Although the article mentions 50 cities, the city of Tulsa is counted twice in unique cities, but there are two cities named Tulsa: one in Ok and another in AL. When I google Tulsa city in Alabama, another city comes up spelled " Tuscaloosa". I am uncertain if the article counted all Tulsa city homicides for one state or not. Since the data file has not specified if the city name was misspelled, I will treat distinct city by city name and state** 
 
 
 Create a city_state variable(e.g. “Baltimore, MD”) and then summarize within cities to obtain the total number of homicides and the number and the number of unsolved homicides (those for which the disposition is “Closed without arrest” or “Open/No arrest”).
@@ -283,6 +327,8 @@ all_cities_results =
 head(all_cities_results)
 ```
 I first started using a forloop method to create this dataframe, and then was able to do it using the `purr::map1` method and `purr::map2` function. I will continue with using the dataframe from the map2 function, but essentially came to create the same dataframes with all 3 methods that show `r nrow(city_stats)` entries, and `r ncol(city_stats)` columns. Each row has data on `r colnames(city_stats)` for all `r nrow(city_stats)` cities.
+
+**Again there are 51 unique cities rather than the 50 reported in the article based on the city name and state ( there are 2 different "Tulsa" cities)**
 
 
 Created a plot that shows the estimates and CIs for each city using geom_errorbar for a way to add error bars based on the upper and lower limits. 
