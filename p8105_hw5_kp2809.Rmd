@@ -19,14 +19,14 @@ set.seed(5)
 
 Birthday problem 
 
-```{r eval=FALSE, include=FALSE}
+```{r eval=FALSE}
 group_sizes=  2:50
 simulations=  10000
 results=  numeric(
   length(group_sizes))
 ```
 
-```{r eval=FALSE, include=FALSE}
+```{r eval=FALSE}
 
 bday_dup= function(n) {
   
@@ -38,7 +38,7 @@ bday_dup= function(n) {
 ```
 
 For loop across all 
-```{r eval=FALSE, include=FALSE}
+```{r eval=FALSE}
 
 for (i in (group_sizes)) {
   n = group_sizes[i]
